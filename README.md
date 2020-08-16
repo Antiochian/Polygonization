@@ -8,6 +8,8 @@ This is a simple project which is really just an excuse to:
 
 But thats enough meta, onto the project.
 
+<img src="polygonization_demo.gif" width=300 height=300>
+
 What is it?
 ------
 
