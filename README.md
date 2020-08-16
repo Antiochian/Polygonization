@@ -3,7 +3,7 @@ Converting a collection of tiles into a polygonal mesh
 
 This is a simple project which is really just an excuse to:
  - Practice using classes in C++
- - Try out using the "olcPixelGameEngine" by David Barr ([available here](https://github.com/OneLoneCoder/olcPixelGameEngine)) as a future casual and hassle-free graphics platform
+ - Try out using the "olcPixelGameEngine" by David Barr ([available here](https://github.com/OneLoneCoder/olcPixelGameEngine)) as a potential go-to casual and hassle-free graphics platform for future projects
  - Practice using the inbuilt Git version control abilities of Visual Studio
 
 But thats enough meta, onto the project.
