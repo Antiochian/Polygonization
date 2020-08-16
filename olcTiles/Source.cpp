@@ -4,8 +4,8 @@
 #include <map>
 
 constexpr int nSize = 10; //number of tiles per side
-const int nTileSize = 8; //number of pixels per tile_side
-const int nCellNumber = nSize*nSize; //hardcoded until i learn how this shit works lol
+constexpr int nTileSize = 8; //number of pixels per tile_side
+constexpr int nCellNumber = (nSize+1)*(nSize+1); //number of cells
 
 class Cell {
 public:
@@ -32,14 +32,22 @@ class Tiler : public olc::PixelGameEngine
 public:
 	Tiler() //constructor
 	{
-		// Name you application
-		sAppName = "Tiler";
+		sAppName = "Polygonization";
 	}
 
 public:
 	std::vector<Cell> CellList;
-	void ConvertTilesToPolygons() {
 
+	void PrintEdges() {
+		//debug function, not used in code, that prints out all the edges in memory into the console
+		std::cout << "EDGE LIST: " << std::endl;
+		for (int n = 0; n < Cell::EdgePool.size(); n++) {
+			std::cout << std::endl;
+			std::cout << Cell::EdgePool[n][0] << ", " << Cell::EdgePool[n][1] << " --> " << Cell::EdgePool[n][2] << ", " << Cell::EdgePool[n][3];
+		}
+	}
+	void ConvertTilesToPolygons() {
+		Cell::EdgePool.clear();
 		for (int i = 0; i < nCellNumber; i++) {
 			Cell* candidate = &CellList[i];
 
@@ -47,8 +55,6 @@ public:
 			bool west_neighbour = ((*candidate).cx != 0) && (CellList[i - 1].CellExists);
 			bool self_exist = (*candidate).CellExists;
 
-			if ((*candidate).cx == 5 && (*candidate).cy == 2) { 
-				std::cout << "ouch!"; }
 			/*there are four possibilities for a northern edge to exist:
 				1: !north !west exist
 				2: !north west exist
@@ -56,11 +62,10 @@ public:
 				4. north west !exist
 
 			ie:
-				bool edge_exist = exist && !north || !exist && north
+				bool north_edge_exist = exist && !north || !exist && north
 
-			for a western edge to exist:
-				bool edge_exist = exist && !west || !exist &&  west
-			*/
+			similarly, for a western edge to exist:
+				bool west_edge_exist = exist && !west || !exist &&  west */
 
 			if ((north_neighbour && !self_exist) || (!north_neighbour && self_exist)) {
 				(*candidate).EdgeExists[0] = true;
@@ -82,7 +87,9 @@ public:
 					nextID += 1;
 				}
 			}
-
+			else {
+				(*candidate).EdgeExists[0] = false;
+			}
 
 			//check if there is NO western neighbour (all as before)
 			if ((west_neighbour && !self_exist) || (!west_neighbour && self_exist)) {
@@ -103,8 +110,10 @@ public:
 					nextID += 1;
 				}
 			}
+			else {
+				(*candidate).EdgeExists[3] = false;
+			}
 		}
-
 		//add 4 borders of screen
 		std::vector<int> border_vec;
 		int left_border[] = { 0, 0, 0, nSize };
@@ -124,8 +133,9 @@ public:
 		border_vec = std::vector<int>(bottom_border, bottom_border + sizeof(bottom_border) / sizeof(int));
 		Cell::EdgePool.insert(std::pair<int, std::vector<int>>(nextID, border_vec));
 		nextID += 1;
+		
 	}
-
+	
 	bool OnUserCreate() override
 	{
 		// Called once at the start, so create things here
@@ -134,13 +144,7 @@ public:
 		int tx, ty;
 		srand(0);
 		for (int i = 0; i < (nSize+1)*(nSize+1); i++) {
-			//texists = ((rand() % 256) < 32) ? true : false;
-			if ((24 < i && i < 27) || (34 < i && i < 36)) {
-				texists = true;
-			}
-			else {
-				texists = false;
-			}
+			texists = ((rand() % 256) < 32) ? true : false; //randomly generate some pattern
 			int tx = i % (nSize+1);
 			int ty = i / (nSize+1);
 			CellList.push_back(Cell(texists, tx, ty));
@@ -148,19 +152,24 @@ public:
 
 		//do polygonization step
 		ConvertTilesToPolygons();
-
-		//prints current edge list:
-		std::cout << "EDGE LIST: " << std::endl;
-		for (int n = 0; n < Cell::EdgePool.size(); n++){
-			std::cout << std::endl;
-			std::cout << Cell::EdgePool[n][0] << ", " << Cell::EdgePool[n][1] << " --> " << Cell::EdgePool[n][2] << ", " << Cell::EdgePool[n][3];	
-		}
 		
 		return true;
 	}
 
 	bool OnUserUpdate(float fElapsedTime) override
 	{
+		Clear(olc::BLACK);
+		// Set tile map blocks to on or off via mouseclick
+		if (GetMouse(0).bReleased)
+		{
+			//GRID coordinates of mouse (dont care about precise coords)
+			int gx = GetMouseX()/nTileSize;
+			int gy = GetMouseY()/nTileSize;
+			//reverse engineer corresponding i
+			int i = gx + gy*(nSize+1);
+			CellList[i].CellExists = !(CellList[i].CellExists);
+			ConvertTilesToPolygons();
+		}
 		//olc::Pixel col(rand() % 256, rand() % 256, rand() % 256);
 		olc::Pixel col = olc::DARK_BLUE;
 		// called once per frame, draws random coloured pixels
@@ -179,7 +188,7 @@ public:
 		for (int ix = 0; ix < nSize * nTileSize; ix++) {
 			for (int iy = 0; iy < nSize * nTileSize; iy++) {
 				if (!(ix% nTileSize) || !(iy% nTileSize)) {
-					Draw(ix, iy);
+					Draw(ix, iy, olc::DARK_GREY);
 
 				}
 			}
@@ -187,7 +196,7 @@ public:
 		std::map<int, std::vector<int>>::iterator it;
 		for (it = Cell::EdgePool.begin(); it != Cell::EdgePool.end(); it++) {
 			std::vector<int> line_coords = it->second;
-			DrawLine(line_coords[0]*nTileSize, line_coords[1]* nTileSize, line_coords[2]* nTileSize, line_coords[3]* nTileSize, olc::RED);
+			DrawLine(line_coords[0]*nTileSize, line_coords[1]* nTileSize, line_coords[2]* nTileSize, line_coords[3]* nTileSize, olc::WHITE);
 		}
 		return true;
 	}
