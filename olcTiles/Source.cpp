@@ -4,7 +4,7 @@
 #include <map>
 
 constexpr int nSize = 10; //number of tiles per side
-const int nTileSize = 10; //number of pixels per tile_side
+const int nTileSize = 8; //number of pixels per tile_side
 const int nCellNumber = nSize*nSize; //hardcoded until i learn how this shit works lol
 
 class Cell {
@@ -47,6 +47,8 @@ public:
 			bool west_neighbour = ((*candidate).cx != 0) && (CellList[i - 1].CellExists);
 			bool self_exist = (*candidate).CellExists;
 
+			if ((*candidate).cx == 5 && (*candidate).cy == 2) { 
+				std::cout << "ouch!"; }
 			/*there are four possibilities for a northern edge to exist:
 				1: !north !west exist
 				2: !north west exist
@@ -82,27 +84,24 @@ public:
 			}
 
 
-				//check if there is NO western neighbour (all as before)
-				if ((west_neighbour && !self_exist) || (!west_neighbour && self_exist)) {
-					(*candidate).EdgeExists[0] = true;
-					if (((*candidate).cy != 0) && (CellList[i - (nSize + 1)].CellExists) && CellList[i - (nSize + 1)].EdgeExists[3]) {
-						//continuation of above edge - get edge ID and edit endpoint
-						int neighbour_ID = CellList[i - (nSize + 1)].EdgeIDs[3];
-						Cell::EdgePool[neighbour_ID][3] += 1;
-						(*candidate).EdgeIDs[3] = neighbour_ID; //update current edge id to match
-					}
-					else if ((*candidate).CellExists) {
-						//no continuation, add new edge to EDGE POOL
-						int edge_iter[] = { (*candidate).cx, (*candidate).cy, (*candidate).cx, (*candidate).cy+1};
-						std::vector<int> new_vec(edge_iter, edge_iter + sizeof(edge_iter) / sizeof(int));
-						Cell::EdgePool.insert(std::pair<int, std::vector<int>>(nextID, new_vec));
-						(*candidate).EdgeIDs[3] = nextID;
-						//advance ID number
-						nextID += 1;
-					}
-				//}
-				
-				
+			//check if there is NO western neighbour (all as before)
+			if ((west_neighbour && !self_exist) || (!west_neighbour && self_exist)) {
+				(*candidate).EdgeExists[3] = true;
+				if (((*candidate).cy != 0) && (CellList[i - (nSize + 1)].CellExists) && CellList[i - (nSize + 1)].EdgeExists[3]) {
+					//continuation of above edge - get edge ID and edit endpoint
+					int neighbour_ID = CellList[i - (nSize + 1)].EdgeIDs[3];
+					Cell::EdgePool[neighbour_ID][3] += 1;
+					(*candidate).EdgeIDs[3] = neighbour_ID; //update current edge id to match
+				}
+				else {
+					//no continuation, add new edge to EDGE POOL
+					int edge_iter[] = { (*candidate).cx, (*candidate).cy, (*candidate).cx, (*candidate).cy+1};
+					std::vector<int> new_vec(edge_iter, edge_iter + sizeof(edge_iter) / sizeof(int));
+					Cell::EdgePool.insert(std::pair<int, std::vector<int>>(nextID, new_vec));
+					(*candidate).EdgeIDs[3] = nextID;
+					//advance ID number
+					nextID += 1;
+				}
 			}
 		}
 
@@ -162,11 +161,12 @@ public:
 
 	bool OnUserUpdate(float fElapsedTime) override
 	{
+		//olc::Pixel col(rand() % 256, rand() % 256, rand() % 256);
+		olc::Pixel col = olc::DARK_BLUE;
 		// called once per frame, draws random coloured pixels
 		for (int i = 0; i < nCellNumber; i++) {
 			Cell* candidate = &CellList[i];
 			if ((*candidate).CellExists){
-				olc::Pixel col(rand() % 256, rand() % 256, rand() % 256);
 				for (int jx = 0; jx < nTileSize; jx++) {
 					for (int jy = 0; jy < nTileSize; jy++) {
 						Draw((*candidate).cx*nTileSize + jx, (*candidate).cy*nTileSize + jy, col );
@@ -175,14 +175,19 @@ public:
 				
 			}
 		}
-		
+	
 		for (int ix = 0; ix < nSize * nTileSize; ix++) {
 			for (int iy = 0; iy < nSize * nTileSize; iy++) {
-				if (!(ix%10) || !(iy%10)) {
+				if (!(ix% nTileSize) || !(iy% nTileSize)) {
 					Draw(ix, iy);
 
 				}
 			}
+		}
+		std::map<int, std::vector<int>>::iterator it;
+		for (it = Cell::EdgePool.begin(); it != Cell::EdgePool.end(); it++) {
+			std::vector<int> line_coords = it->second;
+			DrawLine(line_coords[0]*nTileSize, line_coords[1]* nTileSize, line_coords[2]* nTileSize, line_coords[3]* nTileSize, olc::RED);
 		}
 		return true;
 	}
@@ -191,7 +196,7 @@ public:
 int main()
 {
 	Tiler app;
-	if (app.Construct(nSize*nTileSize, nSize*nTileSize, nTileSize, nTileSize))
+	if (app.Construct(nSize*nTileSize+1, nSize*nTileSize+1, nTileSize, nTileSize))
 		app.Start();
 	return 0;
 }
